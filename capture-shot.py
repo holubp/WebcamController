@@ -8,6 +8,7 @@ import argparse
 import logging as log
 import sys
 import json
+import pytz
 
 from astral import LocationInfo
 from astral.sun import sun
@@ -49,7 +50,7 @@ city = {}
 city['latitude'] = 0.0
 city['longitude'] = 0.0
 city['name'] = "City"
-city['region'] = "Country"
+city['country'] = "Country"
 city['timezone'] = "UTC"
 city['elevation'] = 0
 
@@ -58,12 +59,13 @@ remote = None
 with open(args.configFile) as configFile:
     config = json.load(configFile)
     if 'location' in config:
-        city['latitude'] = config['location'].get('latitude', city['latitude']),
-        city['longitude'] = config['location'].get('longitude', city['longitude']),
-        city['name'] = config['location'].get('city', city['name']),
-        city['country'] = config['location'].get('region', city['region']),
-        city['timezone'] = config['location'].get('timezone', city['timezone'])
-        city['elevation'] = config['location'].get('elevation', city['elevation'])
+        city = config['location']
+        assert 'latitude' in city
+        assert 'longitude' in city
+        assert 'name' in city
+        assert 'country' in city
+        assert 'timezone' in city
+        assert 'elevation' in city
     if 'remote' in config:
         remote = config['remote']
         assert 'hostname' in remote
@@ -77,13 +79,15 @@ with open(args.configFile) as configFile:
         assert 'dir' in fswebcam
         assert 'ext' in fswebcam
 
-#location = LocationInfo(name = city['name'], region = city['region'], latitude = city['latitude'], longitude = city['longitude'], timezone = city['timezone'])
-#observer = location.observer
-#observer.elevation = city['elevation']
+print(f"City: {city['latitude']} {city['longitude']} {city['name']} {city['country']} {city['timezone']} {city['elevation']}")
 
-#ephem_home = ephem.Observer()
-#ephem_home.lat, ephem_home.lon, ephem_home.elevation = str(city['latitude']), str(city['longitude']), int(city['elevation'])
-#ephem_moon = ephem.Moon()
+ephem_home = ephem.Observer()
+ephem_home.lat, ephem_home.lon, ephem_home.elevation = str(city['latitude']), str(city['longitude']), int(city['elevation'])
+ephem_moon = ephem.Moon()
+
+location = LocationInfo(name = city['name'], region = city['country'], latitude = city['latitude'], longitude = city['longitude'], timezone = city['timezone'])
+observer = location.observer
+#observer.elevation = city['elevation']
 
 now = time.localtime()
 target_dir = f'{fswebcam["dir"]}/'+time.strftime('%Y/%m', now)
@@ -95,14 +99,21 @@ params_auto_false=lambda: f'-s "Exposure, Auto=Aperture Priority Mode" -s "Expos
 params_auto_true=lambda: f'-s "Exposure, Auto=Aperture Priority Mode" -s "Exposure, Auto Priority=True" -F {num_frames}'
 params_manual=lambda: f'-s "Exposure, Auto=Manual Mode" -s "Exposure (Absolute)={exposure}" -s "Exposure, Auto Priority=False" -F {num_frames_factor*num_frames}'
 
-#s = sun(location.observer, date=now, tzinfo=city.timezone)
+s = sun(location.observer)
+utc=pytz.UTC
+time_now = utc.localize(datetime.datetime.now())
+if time_now > s['sunrise'] and time_now < s['sunset']:
+    num_frames = 10
+elif time_now > s['dawn'] and time_now < s['dusk']:
+    num_frames = 30
+else:
+    num_frames = 100
 
 num_frames_factor = 1
-num_frames = 10
 os.system(f'{fswebcam["bin"]} {fswebcam["params"]} {params_auto_false()} {target_dir}/{target_file}-auto-false.{fswebcam["ext"]}')
 os.system(f'{fswebcam["bin"]} {fswebcam["params"]} {params_auto_true()} {target_dir}/{target_file}-auto-true.{fswebcam["ext"]}')
 # TODO: set numberof frames based on the time of day w.r.t. sun
-for (exposure, num_frames_factor) in [(x*y, f) for x in [1, 2, 5] for (y,f) in [(1,1), (10,1), (100,1), (1000,2)]]:
+for (exposure, num_frames_factor) in [(x*y, f) for (y,f) in [(1,1), (10,1), (100,1), (1000,2)] for x in [1, 2, 5]]:
     os.system(f'{fswebcam["bin"]} {fswebcam["params"]} {params_manual()} {target_dir}/{target_file}-manual-{exposure}.{fswebcam["ext"]}; exiv2 -M"set Exif.Photo.ExposureTime {exposure}/5000" {target_dir}/{target_file}-manual-{exposure}.{fswebcam["ext"]}')
 os.system(f'enfuse -o {target_dir}/{target_file}-HDR.{fswebcam["ext"]} {target_dir}/{target_file}-manual-*.{fswebcam["ext"]}')
 # TODO: select best one based on time of the day w.r.t. sun or file size
@@ -116,4 +127,4 @@ os.system(f'cp {target_dir}/{target_file}-HDR.{fswebcam["ext"]} {fswebcam["dir"]
 
 os.system(f'cd {fswebcam["dir"]} && {remote["rsync"]} * {remote["hostname"]}:{remote["dir"]}/')
 
-print(f'rm -r {fswebcam["dir"]}')
+os.system(f'rm -r {fswebcam["dir"]}')
