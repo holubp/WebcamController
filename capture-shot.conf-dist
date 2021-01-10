@@ -14,7 +14,7 @@
    },
    "fswebcam":{
       "bin":"fswebcam",
-      "params":"-r 2048x1536 --fps 15 -p MJPEG -S 2 --jpeg 80",
+      "params":"-v -r 2048x1536 --fps 15 -p MJPEG -S 2 --jpeg 80",
       "dir":"/home/user/webcam",
       "ext":"jpg"
    }

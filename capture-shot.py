@@ -110,11 +110,10 @@ else:
     num_frames = 100
 
 num_frames_factor = 1
-os.system(f'{fswebcam["bin"]} {fswebcam["params"]} {params_auto_false()} {target_dir}/{target_file}-auto-false.{fswebcam["ext"]}')
-os.system(f'{fswebcam["bin"]} {fswebcam["params"]} {params_auto_true()} {target_dir}/{target_file}-auto-true.{fswebcam["ext"]}')
-# TODO: set numberof frames based on the time of day w.r.t. sun
+os.system(f'{fswebcam["bin"]} {params_auto_false()} {fswebcam["params"]} {target_dir}/{target_file}-auto-false.{fswebcam["ext"]}')
+os.system(f'{fswebcam["bin"]} {params_auto_true()} {fswebcam["params"]} {target_dir}/{target_file}-auto-true.{fswebcam["ext"]}')
 for (exposure, num_frames_factor) in [(x*y, f) for (y,f) in [(1,1), (10,1), (100,1), (1000,2)] for x in [1, 2, 5]]:
-    os.system(f'{fswebcam["bin"]} {fswebcam["params"]} {params_manual()} {target_dir}/{target_file}-manual-{exposure}.{fswebcam["ext"]}; exiv2 -M"set Exif.Photo.ExposureTime {exposure}/5000" {target_dir}/{target_file}-manual-{exposure}.{fswebcam["ext"]}')
+    os.system(f'{fswebcam["bin"]} {params_manual()} {fswebcam["params"]} {target_dir}/{target_file}-manual-{exposure}.{fswebcam["ext"]}; exiv2 -M"set Exif.Photo.ExposureTime {exposure}/5000" {target_dir}/{target_file}-manual-{exposure}.{fswebcam["ext"]}')
 os.system(f'enfuse -o {target_dir}/{target_file}-HDR.{fswebcam["ext"]} {target_dir}/{target_file}-manual-*.{fswebcam["ext"]}')
 # TODO: select best one based on time of the day w.r.t. sun or file size
 os.system(f'cp {target_dir}/{target_file}-manual-2000.{fswebcam["ext"]} {target_dir}/{target_file}-manual.{fswebcam["ext"]}')
