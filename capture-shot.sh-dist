@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cd /path/to/capture-shot
+./capture-shot.py -d >capture-shot.log 2>&1
