@@ -69,6 +69,7 @@ with open(args.configFile) as configFile:
         assert 'hostname' in remote
         assert 'dir' in remote
         assert 'rsync' in remote
+        assert 'sizelimit' in remote
     assert 'fswebcam' in config
     if 'fswebcam' in config:
         fswebcam = config['fswebcam']
@@ -88,7 +89,7 @@ observer = location.observer
 #observer.elevation = city['elevation']
 
 now = time.localtime()
-target_dir = f'{fswebcam["dir"]}/'+time.strftime('%Y/%m', now)
+target_dir = f'{fswebcam["dir"]}/'+time.strftime('%Y/%m/%d', now)
 target_file = time.strftime('%Y%m%d-%H%M%S', now)
 if not os.path.exists(target_dir):
     log
@@ -105,13 +106,13 @@ log.debug(f"Time now in UTC: {time_now}")
 offset = 30
 if time_now > (s['sunrise'] + datetime.timedelta(minutes=offset)) and time_now < (s['sunset'] + datetime.timedelta(minutes=-offset)) :
     log.debug(f"Time is between sunrise and sunset (with adjustments of {offset} minutes)")
-    num_frames = 10
+    num_frames = 8
 elif time_now > s['dawn'] and time_now < s['dusk']:
     log.debug("Time is between dawn and sunrise or sunset and dusk")
-    num_frames = 50
+    num_frames = 15
 else:
     log.debug("Time is night between dusk and dawn")
-    num_frames = 100
+    num_frames = 30
 
 num_frames_factor = 1
 
@@ -122,11 +123,11 @@ def run(cmd : str):
         log.debug(f'Running cmd: {cmd}')
         os.system(cmd)
 
-run(f'{fswebcam["bin"]} {params_auto_false()} {fswebcam["params"]} {target_dir}/{target_file}-auto-false.{fswebcam["ext"]}')
+#run(f'{fswebcam["bin"]} {params_auto_false()} {fswebcam["params"]} {target_dir}/{target_file}-auto-false.{fswebcam["ext"]}')
 run(f'{fswebcam["bin"]} {params_auto_true()} {fswebcam["params"]} {target_dir}/{target_file}-auto-true.{fswebcam["ext"]}')
 for (exposure, num_frames_factor) in [(x*y, f) for (y,f) in [(1,2), (10,1), (100,1), (1000,2)] for x in [1, 2, 5]]:
     run(f'{fswebcam["bin"]} {params_manual()} {fswebcam["params"]} {target_dir}/{target_file}-manual-{exposure}.{fswebcam["ext"]}; exiv2 -M"set Exif.Photo.ExposureTime {exposure}/5000" {target_dir}/{target_file}-manual-{exposure}.{fswebcam["ext"]}')
-run(f'OMP_NUM_THREADS=4 enfuse --exposure-optimum=0.7 --hard-mask -v --compression=80 -o {target_dir}/{target_file}-HDR.{fswebcam["ext"]} {target_dir}/{target_file}-manual-*.{fswebcam["ext"]}')
+run(f'OMP_NUM_THREADS=6 enfuse --exposure-optimum=0.6 --contrast-weight=0.2 --hard-mask -v --compression=80 -o {target_dir}/{target_file}-HDR.{fswebcam["ext"]} {target_dir}/{target_file}-manual-*.{fswebcam["ext"]}')
 # TODO: select best one based on histogram structure
 # this is just a simple time heuristic
 #if time_now > s['sunrise'] and time_now < s['sunset']:
@@ -138,10 +139,10 @@ run(f'cp `ls --sort=size {target_dir}/{target_file}-manual-*.{fswebcam["ext"]} |
 if not args.preserveallmanual:
     run(f'rm {target_dir}/{target_file}-manual-*.{fswebcam["ext"]}')
 
-run(f'cp {target_dir}/{target_file}-auto-false.{fswebcam["ext"]} {fswebcam["dir"]}/current-auto-false.{fswebcam["ext"]}')
-run(f'cp {target_dir}/{target_file}-auto-true.{fswebcam["ext"]} {fswebcam["dir"]}/current-auto-true.{fswebcam["ext"]}')
-run(f'cp {target_dir}/{target_file}-manual.{fswebcam["ext"]} {fswebcam["dir"]}/current-manual.{fswebcam["ext"]}')
-run(f'cp {target_dir}/{target_file}-HDR.{fswebcam["ext"]} {fswebcam["dir"]}/current-HDR.{fswebcam["ext"]}')
+#run(f'convert {target_dir}/{target_file}-auto-false.{fswebcam["ext"]} -define jpeg:extent={remote["sizelimit"]} {fswebcam["dir"]}/current-auto-false.{fswebcam["ext"]}')
+run(f'convert {target_dir}/{target_file}-auto-true.{fswebcam["ext"]} -define jpeg:extent={remote["sizelimit"]} {fswebcam["dir"]}/current-auto-true.{fswebcam["ext"]}')
+run(f'convert {target_dir}/{target_file}-manual.{fswebcam["ext"]} -define jpeg:extent={remote["sizelimit"]} {fswebcam["dir"]}/current-manual.{fswebcam["ext"]}')
+run(f'convert {target_dir}/{target_file}-HDR.{fswebcam["ext"]} -define jpeg:extent={remote["sizelimit"]} {fswebcam["dir"]}/current-HDR.{fswebcam["ext"]}')
 
 run(f'cd {fswebcam["dir"]} && {remote["rsync"]} * {remote["hostname"]}:{remote["dir"]}/')
 
