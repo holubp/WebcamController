@@ -11,6 +11,7 @@
       "hostname":"hostname.somewhere.eu",
       "dir":"/target/dir",
       "rsync":"rsync -avR"
+      "sizelimit":"145kb"
    },
    "fswebcam":{
       "bin":"fswebcam",
