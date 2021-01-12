@@ -69,7 +69,6 @@ with open(args.configFile) as configFile:
         assert 'hostname' in remote
         assert 'dir' in remote
         assert 'rsync' in remote
-        assert 'sizelimit' in remote
     assert 'fswebcam' in config
     if 'fswebcam' in config:
         fswebcam = config['fswebcam']
@@ -106,7 +105,7 @@ log.debug(f"Time now in UTC: {time_now}")
 offset = 30
 if time_now > (s['sunrise'] + datetime.timedelta(minutes=offset)) and time_now < (s['sunset'] + datetime.timedelta(minutes=-offset)) :
     log.debug(f"Time is between sunrise and sunset (with adjustments of {offset} minutes)")
-    num_frames = 8
+    num_frames = 4
 elif time_now > s['dawn'] and time_now < s['dusk']:
     log.debug("Time is between dawn and sunrise or sunset and dusk")
     num_frames = 15
@@ -139,10 +138,16 @@ run(f'cp `ls --sort=size {target_dir}/{target_file}-manual-*.{fswebcam["ext"]} |
 if not args.preserveallmanual:
     run(f'rm {target_dir}/{target_file}-manual-*.{fswebcam["ext"]}')
 
-#run(f'convert {target_dir}/{target_file}-auto-false.{fswebcam["ext"]} -define jpeg:extent={remote["sizelimit"]} {fswebcam["dir"]}/current-auto-false.{fswebcam["ext"]}')
-run(f'convert {target_dir}/{target_file}-auto-true.{fswebcam["ext"]} -define jpeg:extent={remote["sizelimit"]} {fswebcam["dir"]}/current-auto-true.{fswebcam["ext"]}')
-run(f'convert {target_dir}/{target_file}-manual.{fswebcam["ext"]} -define jpeg:extent={remote["sizelimit"]} {fswebcam["dir"]}/current-manual.{fswebcam["ext"]}')
-run(f'convert {target_dir}/{target_file}-HDR.{fswebcam["ext"]} -define jpeg:extent={remote["sizelimit"]} {fswebcam["dir"]}/current-HDR.{fswebcam["ext"]}')
+if "sizelimit" in remote:
+    #run(f'convert {target_dir}/{target_file}-auto-false.{fswebcam["ext"]} -define jpeg:extent={remote["sizelimit"]} {fswebcam["dir"]}/current-auto-false.{fswebcam["ext"]}')
+    run(f'convert {target_dir}/{target_file}-auto-true.{fswebcam["ext"]} -define jpeg:extent={remote["sizelimit"]} {fswebcam["dir"]}/current-auto-true.{fswebcam["ext"]}')
+    run(f'convert {target_dir}/{target_file}-manual.{fswebcam["ext"]} -define jpeg:extent={remote["sizelimit"]} {fswebcam["dir"]}/current-manual.{fswebcam["ext"]}')
+    run(f'convert {target_dir}/{target_file}-HDR.{fswebcam["ext"]} -define jpeg:extent={remote["sizelimit"]} {fswebcam["dir"]}/current-HDR.{fswebcam["ext"]}')
+else:
+    #run(f'cp {target_dir}/{target_file}-auto-false.{fswebcam["ext"]} {fswebcam["dir"]}/current-auto-false.{fswebcam["ext"]}')
+    run(f'cp {target_dir}/{target_file}-auto-true.{fswebcam["ext"]} {fswebcam["dir"]}/current-auto-true.{fswebcam["ext"]}')
+    run(f'cp {target_dir}/{target_file}-manual.{fswebcam["ext"]} {fswebcam["dir"]}/current-manual.{fswebcam["ext"]}')
+    run(f'cp {target_dir}/{target_file}-HDR.{fswebcam["ext"]} {fswebcam["dir"]}/current-HDR.{fswebcam["ext"]}')
 
 run(f'cd {fswebcam["dir"]} && {remote["rsync"]} * {remote["hostname"]}:{remote["dir"]}/')
 
